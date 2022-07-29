@@ -1,11 +1,24 @@
-export function newNotif(title, text) {
-	const notif = new Notification(title, {
-		body: text
-	});
+navigator.serviceWorker.register('sw.js');
+Notification.requestPermission(function(result) {
+  if (result === 'granted') {
+    navigator.serviceWorker.ready.then(function(registration) {
+      registration.showNotification('Notification with ServiceWorker');
+    });
+  }
+});
 
-	setTimeout(() => {
-		notif.close();
-	}, 10000);
+export function newNotif(title, text) {
+	// const notif = new Notification(title, {
+	// 	body: text
+	// });
+	navigator.serviceWorker.ready.then(function(registration) {
+		registration.showNotification(title, {
+			body: text
+		});
+	});
+	// setTimeout(() => {
+	// 	notif.close();
+	// }, 10000);
 }
 
 export function askNotificationPermission() {

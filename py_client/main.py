@@ -158,7 +158,7 @@ while cap.isOpened():
     if 'text' in locals():
         if text == "forward":
             warningPing()
-            time.sleep(10)
+            time.sleep(5)
 
 
     if cv.waitKey(20) & 0xFF == ord('s'):

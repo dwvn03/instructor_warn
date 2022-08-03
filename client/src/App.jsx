@@ -6,7 +6,6 @@ import { newNotif, askNotificationPermission } from "./notif";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const socket = io(BASE_URL);
 
-console.log(BASE_URL)
 function App() {
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [lastPong, setLastPong] = useState(null);

@@ -27,7 +27,7 @@ io.on('connection', (socket) => {
 
     socket.on('message', (message) => {
         console.log(message);
-        io.emit('message', `${socket.id.substr(0)} said ${message}` );   
+        io.emit('message', `${socket.id} said ${message}` );   
     });
 
     socket.on('ping', (text) => {

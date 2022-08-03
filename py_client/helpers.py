@@ -1,3 +1,4 @@
+import asyncio
 import cv2 as cv
 import mediapipe as mp
 
@@ -5,7 +6,7 @@ mp_drawing_styles = mp.solutions.drawing_styles
 mp_drawing = mp.solutions.drawing_utils
 mp_face_mesh = mp.solutions.face_mesh
 
-def resizeThenShow(image, scale):
+async def resizeThenShow(image, scale):
     width = int(image.shape[1] * scale)
     height = int(image.shape[0] * scale)
     dim = (width, height)
@@ -14,7 +15,9 @@ def resizeThenShow(image, scale):
     resized = cv.resize(image, dim, interpolation = cv.INTER_AREA)
 
     # time.sleep(0.01)
-    cv.imshow('Head Pose Estimation', resized)
+    await asyncio.coroutine(
+        cv.imshow('Head Pose Estimation', resized)
+    )
 
 def draw_landmarks(image, landmark_list, tesselation=False, contours=False, irises=False):
     if tesselation:

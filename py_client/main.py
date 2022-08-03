@@ -136,17 +136,24 @@ async def processFrame():
 
         cv.putText(image, f'FPS: {int (fps) } ', (20,450), cv.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
 
-        resizeThenShow(image=image, scale=1.5)
+        asyncio.gather(
+            resizeThenShow(image=image, scale=1.5)
+        )
 
         if 'text' in locals():
             # print(text)
             if text == "forward":
                 # ping_task = 
-                await asyncio.create_task(warningPing())
+                asyncio.gather(warningPing())
                 # background_tasks.add(ping_task)
                 # ping_task.add_done_callback(background_tasks.discard)
                 # await ping_task
                 # time.sleep(5)
+
+        # await asyncio.gather(
+        #     show_task,
+        #     ping_task
+        # )
 
         if cv.waitKey(20) & 0xFF == ord('s'):
             return True
@@ -156,9 +163,13 @@ async def main(cap):
     loop = asyncio.get_running_loop()
 
     while cap.isOpened():
-        with concurrent.futures.ThreadPoolExecutor(10) as pool:
+        [terminate] = await asyncio.gather(processFrame())
+
+        if terminate:
+            break
+        # with concurrent.futures.ThreadPoolExecutor(10) as pool:
             # terminate =
-            await loop.run_in_executor(pool, processFrame)
+            # await loop.run_in_executor(pool, processFrame)
             # [terminate] = await asyncio.gather(processFrame(cap))
             # if terminate:
             #     break

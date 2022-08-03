@@ -3,8 +3,10 @@ import io from "socket.io-client";
 
 import { newNotif, askNotificationPermission } from "./notif";
 
-const socket = io("ws://localhost:8080");
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+const socket = io(BASE_URL);
 
+console.log(BASE_URL)
 function App() {
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [lastPong, setLastPong] = useState(null);
@@ -22,7 +24,7 @@ function App() {
     });
 
     socket.on("warned", (text) => {
-      setLastPong(new Date().toISOString());
+      setLastPong(new Date().toISOString() + " " + text);
       newNotif("Be Careful", "Your instructor is looking at you");
     });
 
@@ -36,8 +38,8 @@ function App() {
   const sendPing = () => {
     socket.emit("ping");
   }
+
   const sendPingWithText = () => {
-    newNotif("bla", value);
     socket.emit("ping", value);
   }
 

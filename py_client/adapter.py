@@ -2,7 +2,7 @@ import requests
 import asyncio
 
 throttled = False
-url = "http://localhost:8080/warn/"
+url = "https://instructor-warn.herokuapp.com/warn"
 
 async def warningPing():
     global throttled

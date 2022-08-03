@@ -26,7 +26,7 @@ export function newNotif(title, text) {
 				}
 			})
 		});
-	}, 9900);
+	}, 9000);
 }
 
 export function askNotificationPermission() {

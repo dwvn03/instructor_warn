@@ -1,30 +1,37 @@
-from asyncio.windows_events import NULL
+import asyncio
+import concurrent.futures
+import time
+
 import numpy as np
 import cv2 as cv
 import mediapipe as mp
-import time
 
 from adapter import warningPing
+from helpers import *
 
 mp_drawing_styles = mp.solutions.drawing_styles
 
 mp_drawing = mp.solutions.drawing_utils
-drawing_Spec = mp_drawing.DrawingSpec(thickness=1, circle_radius=1)
+drawing_spec = mp_drawing.DrawingSpec(thickness=1, circle_radius=1)
 
 mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+face_mesh = mp_face_mesh.FaceMesh(
+                max_num_faces = 3, 
+                min_detection_confidence=0.5, 
+                min_tracking_confidence=0.5
+            )
 
-cap = cv.VideoCapture(1, cv.CAP_DSHOW)
+async def processFrame():
+    global cap
+    background_tasks = set()
 
-while cap.isOpened():
+    # while cap.isOpened():
     have_image, image = cap.read()
 
     if not have_image:
-        break
+        return True
 
     start = time.time()
-    # warningPing()
-    # input()
 
     # Flip the image horizontally
     # Also convert the color space from BGR to RG8
@@ -42,12 +49,13 @@ while cap.isOpened():
     # Also convert the color back
     image = cv.cvtColor(image, cv.COLOR_RGB2BGR)
 
-    img_h, img_w, imgC = image.shape
-    face_3d = []
-    face_2d = []
+    img_h, img_w, img_c = image.shape
 
     if results.multi_face_landmarks:
         for face_landmarks in results.multi_face_landmarks:
+            face_3d = []
+            face_2d = []
+
             for idx, lm in enumerate(face_landmarks.landmark):
                 if idx in [1, 33, 61, 199, 263, 291]:
                     if idx == 1:
@@ -69,13 +77,15 @@ while cap.isOpened():
 
             # The camera matrix
             focal_length = 1 * img_w
-            cam_matrix = np.array([ [focal_length, 8, img_h / 2],
-                                    [0, focal_length, img_w / 2],
-                                    [0, 0, 1]])
+            cam_matrix = np.array([ 
+                [focal_length, 8, img_h / 2],
+                [0, focal_length, img_w / 2],
+                [0, 0, 1]
+            ])
             #The distortion parameters
-            dist_matrix = np.zeros ( (4, 1), dtype=np.float64)
+            dist_matrix = np.zeros((4, 1), dtype=np.float64)
             # Solve PnP
-            success, rot_vec, trans_vec = cv.solvePnP (face_3d, face_2d, cam_matrix, dist_matrix)
+            success, rot_vec, trans_vec = cv.solvePnP(face_3d, face_2d, cam_matrix, dist_matrix)
             # Get rotational matrix
             rmat, jac = cv.Rodrigues(rot_vec)
 
@@ -100,7 +110,7 @@ while cap.isOpened():
 
             #Display the nose direction
             nose_3d_projection, jacobian = cv.projectPoints(nose_3d, rot_vec, trans_vec, cam_matrix, dist_matrix)
-            p1 = (int(nose_2d[0]), int (nose_2d[1]))
+            p1 = (int(nose_2d[0]), int(nose_2d[1]))
             p2 = (int(nose_2d[0] + y * 10), int(nose_2d[1] - x * 10))
 
             cv.line(image, p1, p2, (255, 0, 0), 3)
@@ -110,59 +120,54 @@ while cap.isOpened():
             cv.putText(image, "y: " + str(np.round(y, 2)), (450, 100), cv.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
             cv.putText(image, "z: " + str(np.round(z, 2)), (450, 150), cv.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
 
-            mp_drawing.draw_landmarks(
+            draw_landmarks(
                 image=image,
                 landmark_list=face_landmarks,
-                connections=mp_face_mesh.FACEMESH_TESSELATION,
-                landmark_drawing_spec=None,
-                connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_tesselation_style()
+                tesselation=True,
+                contours=True,
             )
 
-            # mp_drawing.draw_landmarks(
-            #     image=image,
-            #     landmark_list=face_landmarks,
-            #     connections=mp_face_mesh.FACEMESH_CONTOURS,
-            #     landmark_drawing_spec=None,
-            #     connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_contours_style()
-            # )
 
-            # mp_drawing.draw_landmarks(
-            #     image=image,
-            #     landmark_list=face_landmarks,
-            #     connections=mp_face_mesh.FACEMESH_IRISES,
-            #     landmark_drawing_spec=None,
-            #     connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_iris_connections_style()
-            # )
-    
-    end = time.time ()
-    totalTime = end - start
+        end = time.time ()
+        totalTime = end - start
 
-    fps = 1 / totalTime
-    print("FPS: ", fps)
+        fps = 1 / totalTime
+        print("FPS: ", fps)
 
-    cv.putText(image, f'FPS: {int (fps) } ', (20,450), cv.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
+        cv.putText(image, f'FPS: {int (fps) } ', (20,450), cv.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
 
+        resizeThenShow(image=image, scale=1.5)
 
-    # percent of original size
-    scale_percent = 150 
-    width = int(image.shape[1] * scale_percent / 100)
-    height = int(image.shape[0] * scale_percent / 100)
-    dim = (width, height)
-    
-    # resize image
-    resized = cv.resize(image, dim, interpolation = cv.INTER_AREA)
+        if 'text' in locals():
+            # print(text)
+            if text == "forward":
+                # ping_task = 
+                await asyncio.create_task(warningPing())
+                # background_tasks.add(ping_task)
+                # ping_task.add_done_callback(background_tasks.discard)
+                # await ping_task
+                # time.sleep(5)
 
-    # time.sleep(0.01)
-    cv.imshow('Head Pose Estimation', resized)
-
-    if 'text' in locals():
-        if text == "forward":
-            warningPing()
-            time.sleep(5)
+        if cv.waitKey(20) & 0xFF == ord('s'):
+            return True
 
 
-    if cv.waitKey(20) & 0xFF == ord('s'):
-        break
+async def main(cap):
+    loop = asyncio.get_running_loop()
+
+    while cap.isOpened():
+        with concurrent.futures.ThreadPoolExecutor(10) as pool:
+            # terminate =
+            await loop.run_in_executor(pool, processFrame)
+            # [terminate] = await asyncio.gather(processFrame(cap))
+            # if terminate:
+            #     break
+
+cap = cv.VideoCapture(1, cv.CAP_DSHOW)
+
+asyncio.run(main(cap));
+# asyncio.ensu
+
 
 cap.release()
 cv.destroyAllWindows()

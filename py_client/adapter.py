@@ -1,5 +1,19 @@
 import requests
+import asyncio
 
-def warningPing():
-    url = "http://localhost:8080/warn/"
-    requests.get(url)
+throttled = False
+url = "http://localhost:8080/warn/"
+
+async def warningPing():
+    global throttled
+    global url
+
+    if not throttled:
+        try:
+            requests.get(url)
+            throttled = True
+            await asyncio.sleep(10)
+        except:
+            print("Unable to ping")
+        finally:
+            throttled = False

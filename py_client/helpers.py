@@ -1,4 +1,3 @@
-import asyncio
 import cv2 as cv
 import mediapipe as mp
 
@@ -14,10 +13,7 @@ async def resizeThenShow(image, scale):
     # resize image
     resized = cv.resize(image, dim, interpolation = cv.INTER_AREA)
 
-    # time.sleep(0.01)
-    await asyncio.coroutine(
-        cv.imshow('Head Pose Estimation', resized)
-    )
+    cv.imshow('Head Pose Estimation', resized)
 
 def draw_landmarks(image, landmark_list, tesselation=False, contours=False, irises=False):
     if tesselation:

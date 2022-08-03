@@ -1,5 +1,4 @@
 import asyncio
-import concurrent.futures
 import time
 
 import numpy as np
@@ -21,11 +20,7 @@ face_mesh = mp_face_mesh.FaceMesh(
                 min_tracking_confidence=0.5
             )
 
-async def processFrame():
-    global cap
-    background_tasks = set()
-
-    # while cap.isOpened():
+async def processFrame(cap):
     have_image, image = cap.read()
 
     if not have_image:
@@ -60,7 +55,7 @@ async def processFrame():
                 if idx in [1, 33, 61, 199, 263, 291]:
                     if idx == 1:
                         nose_2d = (lm.x * img_w, lm.y * img_h)
-                        nose_3d = (lm. x * img_w, lm.y * img_h, lm.z * 3000)
+                        nose_3d = (lm.x * img_w, lm.y * img_h, lm.z * 3000)
                     
                     x, y = int(lm.x * img_w), int(lm.y * img_h)
 
@@ -72,8 +67,6 @@ async def processFrame():
 
             face_2d = np.array(face_2d, dtype=np.float64)
             face_3d = np.array(face_3d, dtype=np.float64)
-
-            focal_length = 1 * img_w
 
             # The camera matrix
             focal_length = 1 * img_w
@@ -93,9 +86,7 @@ async def processFrame():
             angles, mtxR, mtxQ, Ox, Qy, Qz = cv.RQDecomp3x3(rmat)
 
             # Get the y rotation degree
-            x = angles[0] * 360
-            y = angles[1] * 360
-            z = angles[2] * 360
+            x, y, z = [a * 360 for a in angles]
 
             if y < -10:
                 text = "looking left"
@@ -109,16 +100,16 @@ async def processFrame():
                 text = "forward"
 
             #Display the nose direction
-            nose_3d_projection, jacobian = cv.projectPoints(nose_3d, rot_vec, trans_vec, cam_matrix, dist_matrix)
+            # nose_3d_projection, jacobian = cv.projectPoints(nose_3d, rot_vec, trans_vec, cam_matrix, dist_matrix)
             p1 = (int(nose_2d[0]), int(nose_2d[1]))
             p2 = (int(nose_2d[0] + y * 10), int(nose_2d[1] - x * 10))
 
             cv.line(image, p1, p2, (255, 0, 0), 3)
             #Add the text on the image
             cv.putText (image, text, (20, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2)
-            cv.putText(image, "x: " + str(np.round(x, 2)), (450, 50), cv.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
-            cv.putText(image, "y: " + str(np.round(y, 2)), (450, 100), cv.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
-            cv.putText(image, "z: " + str(np.round(z, 2)), (450, 150), cv.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
+            # cv.putText(image, "x: " + str(np.round(x, 2)), (450, 50), cv.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
+            # cv.putText(image, "y: " + str(np.round(y, 2)), (450, 100), cv.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
+            # cv.putText(image, "z: " + str(np.round(z, 2)), (450, 150), cv.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
 
             draw_landmarks(
                 image=image,
@@ -127,58 +118,40 @@ async def processFrame():
                 contours=True,
             )
 
+    end = time.time ()
+    totalTime = end - start
 
-        end = time.time ()
-        totalTime = end - start
+    fps = 1 / totalTime
+    print("FPS: ", fps)
 
-        fps = 1 / totalTime
-        print("FPS: ", fps)
+    cv.putText(image, f'FPS: {int (fps) } ', (20,450), cv.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
 
-        cv.putText(image, f'FPS: {int (fps) } ', (20,450), cv.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
+    if 'text' in locals():
+        if text == "forward":
+            asyncio.create_task(
+                warningPing()
+            )
 
-        asyncio.gather(
-            resizeThenShow(image=image, scale=1.5)
-        )
+    if cv.waitKey(20) & 0xFF == ord('s'):
+        return True
 
-        if 'text' in locals():
-            # print(text)
-            if text == "forward":
-                # ping_task = 
-                asyncio.gather(warningPing())
-                # background_tasks.add(ping_task)
-                # ping_task.add_done_callback(background_tasks.discard)
-                # await ping_task
-                # time.sleep(5)
-
-        # await asyncio.gather(
-        #     show_task,
-        #     ping_task
-        # )
-
-        if cv.waitKey(20) & 0xFF == ord('s'):
-            return True
+    asyncio.create_task(
+        resizeThenShow(image=image, scale=1.5)
+    )
+    return False
 
 
 async def main(cap):
-    loop = asyncio.get_running_loop()
-
     while cap.isOpened():
-        [terminate] = await asyncio.gather(processFrame())
+        terminate = await asyncio.ensure_future(processFrame(cap))
 
         if terminate:
             break
-        # with concurrent.futures.ThreadPoolExecutor(10) as pool:
-            # terminate =
-            # await loop.run_in_executor(pool, processFrame)
-            # [terminate] = await asyncio.gather(processFrame(cap))
-            # if terminate:
-            #     break
 
-cap = cv.VideoCapture(1, cv.CAP_DSHOW)
+if __name__ == "__main__":
+    cap = cv.VideoCapture(1, cv.CAP_DSHOW)
 
-asyncio.run(main(cap));
-# asyncio.ensu
+    asyncio.run(main(cap));
 
-
-cap.release()
-cv.destroyAllWindows()
+    cap.release()
+    cv.destroyAllWindows()

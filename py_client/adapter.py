@@ -1,16 +1,20 @@
 import requests
 import asyncio
+import multiprocessing.dummy as mpd
 
 throttled = False
-url = "https://instructor-warn.herokuapp.com/warn"
+URL = "https://instructor-warn.herokuapp.com/warn"
+
+pool = mpd.Pool(10)
 
 async def warningPing():
     global throttled
-    global url
+    global URL
 
     if not throttled:
         try:
-            requests.get(url)
+            pool.apply_async(requests.get, [ URL ])
+            # requests.get(url)
             throttled = True
             await asyncio.sleep(10)
         except:
